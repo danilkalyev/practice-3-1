@@ -10,28 +10,36 @@
 import { Book } from "./task1-types";
 import { filterByTitle, sortBooks } from "./task5-utils";
 
-/*
-  Реализуйте класс BookCatalog.
+export class BookCatalog {
+  private books: Book[];
+  readonly id: string;
 
-  Состояние:
-    - books: Book[]        — приватное, снаружи недоступно
-    - id: string           — readonly
+  constructor(id: string, books: Book[] = []){
+    this.id = id;
+    this.books = books;
+  }
 
-  Конструктор: (id: string, books: Book[] = [])
+  addBook(book: Book): void {
+    this.books = [...this.books, book];
+  }
 
-  Публичный API:
-    addBook(book: Book): void
-    removeBook(id: string): void
-    getBooks(): Book[]
-    searchByTitle(query: string): Book[]
-    sortBy(sortType: 'year' | 'rating'): Book[]
-    get count(): number
+  removeBook(id: string) {
+    this.books = [...this.books].filter(b => b.id !== id);
+  }
 
-  Требования:
-    - addBook / removeBook не мутируют массив, а создают новый
-    - searchByTitle и sortBy переиспользуют filterByTitle / sortBooks
-    - внешний код не может присвоить this.books напрямую
+  getBooks(): Book[] {
+    return [...this.books]
+  }
 
-  Бонус: класс Book с полями id, title, authors, year?, rating?,
-  методом format() и статическим createFromFormData(FormData).
-*/
+  sortBy(sortType: "year" | "rating"): Book[] {
+    return sortBooks(this.books, sortType);
+  }
+
+  searchByTitle(query: string): Book[] {
+    return this.books.filter(filterByTitle(query));
+  }
+
+  get count(): number {
+    return this.books.length;
+  }
+}
