@@ -7,7 +7,8 @@
 // Проверка: npm test -- task6
 // ============================================================
 
-import { Book } from "./task1-types";
+import { Book, formatBook } from "./task1-types";
+import { createBookFromForm } from "./task4-integration";
 import { filterByTitle, sortBooks } from "./task5-utils";
 
 /*
@@ -67,5 +68,33 @@ export class BookCatalog {
 
   get count(): number {
     return this.books.length;
+  }
+}
+
+// Бонус: класс одной книги (имя BookClass — чтобы не конфликтовать с интерфейсом Book)
+export class BookClass {
+  readonly id: string;
+  title: string;
+  authors: string[];
+  year?: number;
+  rating?: number;
+
+  constructor(id: string, title: string, authors: string[], year?: number, rating?: number) {
+    this.id = id;
+    this.title = title;
+    this.authors = authors;
+    this.year = year;
+    this.rating = rating;
+  }
+
+  // логика из formatBook: "Title (Year) — Authors"
+  format(): string {
+    return formatBook(this);
+  }
+
+  // static — вызывается у самого класса: BookClass.createFromFormData(formData)
+  static createFromFormData(formData: FormData): BookClass {
+    const book = createBookFromForm(formData);
+    return new BookClass(book.id, book.title, book.authors, book.year, book.rating);
   }
 }

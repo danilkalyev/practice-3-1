@@ -11,9 +11,6 @@ export interface Book {
 }
 
 
-// Объявление типа Catalog как словаря: ключ — id книги, значение — Book
-export type Catalog = Record<string, Book>;
-
 // TODO 3: Объявите тип BookFilter как функцию, которая принимает Book и возвращает boolean
 export type BookFilter = (book: Book) => boolean;
 
@@ -26,6 +23,7 @@ export function formatBook(book: Book): string {
 }
 
 // Функция calculateAverageYear(books: Book[]): number возвращает средний год издания. Если книг нет или у них нет года — вернуть 0.
+/** @deprecated пока не используется, задел на фичу "Статистика" */
 export function calculateAverageYear(books: Book[]): number {
   const booksWithYear = books.filter((book) => book.year !== undefined);
 

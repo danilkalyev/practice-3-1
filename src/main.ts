@@ -1,37 +1,34 @@
 import './styles.css';
-import { Book, Catalog } from './task1-types';
-import { addBook, removeBook } from './task2-functions';
+import { Book } from './task1-types';
 import { applyFilters, filterByAuthor, filterByMinYear } from './task3-filters';
-import { createBookFromForm } from './task4-integration';
-import { filterByTitle, sortBooks } from './task5-utils';
+import { sortBooks } from './task5-utils';
 //TODO 3.0: импортируйте BookCatalog из task6
+import { BookCatalog, BookClass } from './task6-classes';
 
-// TODO 3.1: замените `let catalog: Catalog = {...}` на экземпляр
-// `new BookCatalog([...те же книги...], 'main')`.
-// Тип `Catalog` после замены больше не нужен — уберите импорт.
-
-let catalog: Catalog = {
-  '1': { id: '1', title: 'TypeScript Guide', authors: ['John Doe'], year: 2024 },
-  '2': { id: '2', title: 'JavaScript Basics', authors: ['Jane Smith'], year: 2022 },
-};
+// TODO 3.1: каталог — экземпляр класса BookCatalog.
+// Порядок аргументов: сначала id, потом книги.
+let catalog = new BookCatalog('main', [
+  { id: '1', title: 'TypeScript Guide', authors: ['John Doe'], year: 2024 },
+  { id: '2', title: 'JavaScript Basics', authors: ['Jane Smith'], year: 2022 },
+]);
 
 
 // восстановление из localStorage
 
-// Сейчас: JSON.parse кладёт в catalog простой объект — этого достаточно,
-// потому что все операции идут через свободные функции addBook/removeBook.
-// TODO 3.2: после перехода на класс JSON.parse вернёт объект БЕЗ методов.
-// Нужно будет воссоздать экземпляр:
-//   const parsed = JSON.parse(saved);
-//   catalog = new BookCatalog(parsed.books, parsed.id);
-
+// TODO 3.2: JSON.parse вернёт объект БЕЗ методов,
+// поэтому заново создаём экземпляр класса из сохранённых данных.
+// Старый формат из Практики 2 ({ '1': {...} }) не имеет поля books — его пропускаем.
 const saved = localStorage.getItem('catalog');
 if (saved) {
-  catalog = JSON.parse(saved) as Catalog;
+  const parsed = JSON.parse(saved);
+  if (Array.isArray(parsed.books)) {
+    catalog = new BookCatalog(parsed.id, parsed.books);
+  }
 }
 
 
 // сохранение В localStorage
+// JSON.stringify(catalog) даст строку вида {"id":"main","books":[...]}
 function saveCatalog() {
   localStorage.setItem('catalog', JSON.stringify(catalog));
 }
@@ -73,12 +70,11 @@ function renderBooks(books: Book[]) {
     deleteBtn.textContent = 'Удалить';
     deleteBtn.addEventListener('click', () => {
 
-      // TODO 3.3: замените функциональный removeBook на метод класса.      
-      catalog = removeBook(catalog, book.id)
+      // TODO 3.3: удаление — метод класса
+      catalog.removeBook(book.id);
       saveCatalog();
-      // TODO 3.4: замените вызов Object.values(catalog) на метод каталога.
-      // Таких мест, где вызывается Object.values(catalog), в файле несколько — найдите все.
-      renderBooks(Object.values(catalog));
+      // TODO 3.4: Object.values(catalog) -> catalog.getBooks()
+      renderBooks(catalog.getBooks());
     });
     card.append(deleteBtn);
 
@@ -86,8 +82,8 @@ function renderBooks(books: Book[]) {
   });
 }
 
-// Первичная отрисовка
-renderBooks(Object.values(catalog));
+// Первичная отрисовка (сортировка — метод класса)
+renderBooks(catalog.sortBy(sortBySelect.value as 'year' | 'rating'));
 
 // обработчик формы
 form.addEventListener('submit', (e) => {
@@ -95,15 +91,16 @@ form.addEventListener('submit', (e) => {
   errorMessage.textContent = '';
   try {
     const formData = new FormData(form);
-    const newBook = createBookFromForm(formData);
+    // бонус: книга создаётся статическим методом класса BookClass
+    const newBook = BookClass.createFromFormData(formData);
 
-    // TODO 3.5: замените функциональный addBook на метод класса.
-    catalog = addBook(catalog, newBook);
+    // TODO 3.5: добавление — метод класса
+    catalog.addBook(newBook);
 
     saveCatalog();
     form.reset();
 
-    renderBooks(Object.values(catalog));
+    renderBooks(catalog.getBooks());
   } catch (error) {
     if (error instanceof Error) {
       errorMessage.textContent = error.message;
@@ -111,17 +108,21 @@ form.addEventListener('submit', (e) => {
   }
 });
 
-// фильтры и сортировка
+// фильтры, поиск и сортировка
 function refreshList() {
   const filters: ((book: Book) => boolean)[] = [];
 
   if (authorInput.value.trim()) filters.push(filterByAuthor(authorInput.value.trim()));
   if (yearInput.value) filters.push(filterByMinYear(parseInt(yearInput.value, 10)));
-  if (searchInput.value.trim()) filters.push(filterByTitle(searchInput.value.trim()));
 
-  const allBooks = Object.values(catalog);
-  const filteredBooks = applyFilters(allBooks, filters);
+  // поиск по названию — метод класса (пустая строка вернёт все книги)
+  const foundBooks = catalog.searchByTitle(searchInput.value.trim());
 
+  // фильтры по автору и году — к найденным книгам
+  const filteredBooks = applyFilters(foundBooks, filters);
+
+  // сортируем только найденные книги
+  // (catalog.sortBy() отсортировал бы весь каталог, поэтому здесь sortBooks — её же использует sortBy внутри)
   renderBooks(sortBooks(filteredBooks, sortBySelect.value as 'year' | 'rating'));
 }
 
