@@ -4,6 +4,8 @@ import { applyFilters, filterByAuthor, filterByMinYear } from './task3-filters';
 import { sortBooks } from './task5-utils';
 //TODO 3.0: импортируйте BookCatalog из task6
 import { BookCatalog, BookClass } from './task6-classes';
+// Практика 3.2: класс вишлиста
+import { Wishlist } from './task7-wishlist';
 
 // TODO 3.1: каталог — экземпляр класса BookCatalog.
 // Порядок аргументов: сначала id, потом книги.
@@ -11,6 +13,10 @@ let catalog = new BookCatalog('main', [
   { id: '1', title: 'TypeScript Guide', authors: ['John Doe'], year: 2024 },
   { id: '2', title: 'JavaScript Basics', authors: ['Jane Smith'], year: 2022 },
 ]);
+
+// Практика 3.2: вишлист рядом с каталогом.
+// Хранит только id книг, сами книги берёт из catalog.
+let wishlist = new Wishlist();
 
 
 // восстановление из localStorage
@@ -26,11 +32,22 @@ if (saved) {
   }
 }
 
+// Практика 3.2: восстановление вишлиста — сохранённый массив id передаём в конструктор
+const savedWishlist = localStorage.getItem('wishlist');
+if (savedWishlist) {
+  wishlist = new Wishlist(JSON.parse(savedWishlist));
+}
+
 
 // сохранение В localStorage
 // JSON.stringify(catalog) даст строку вида {"id":"main","books":[...]}
 function saveCatalog() {
   localStorage.setItem('catalog', JSON.stringify(catalog));
+}
+
+// Практика 3.2: сохраняем только массив id избранного, например ["1","3"]
+function saveWishlist() {
+  localStorage.setItem('wishlist', JSON.stringify(wishlist.getIds()));
 }
 
 // DOM-элементы
@@ -43,7 +60,50 @@ const errorMessage = document.querySelector('#errorMessage') as HTMLDivElement;
 const searchInput = document.querySelector('#searchInput') as HTMLInputElement;
 const sortBySelect = document.querySelector('#sortBy') as HTMLSelectElement;
 
-// отрисовка
+// карточка книги — одна функция для основного списка и для избранного
+function createBookCard(book: Book): HTMLDivElement {
+  const card = document.createElement('div');
+  card.className = 'book-card';
+
+  const titleEl = document.createElement('h3');
+  titleEl.textContent = `${book.title} — ${book.authors.join(', ')}${book.year ? `, ${book.year}` : ''}`;
+  card.append(titleEl);
+
+  if (book.rating !== undefined) {
+    const ratingEl = document.createElement('p');
+    ratingEl.textContent = `Рейтинг: ${book.rating}`;
+    card.append(ratingEl);
+  }
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.textContent = 'Удалить';
+  deleteBtn.addEventListener('click', () => {
+
+    // TODO 3.3: удаление — метод класса
+    catalog.removeBook(book.id);
+    saveCatalog();
+    // TODO 3.4: Object.values(catalog) -> catalog.getBooks()
+    renderBooks(catalog.getBooks());
+    // книга сама пропадёт из избранного: getFavorites берёт актуальные книги из каталога
+    renderWishlist();
+  });
+  card.append(deleteBtn);
+
+  // Практика 3.2: кнопка «Избранное»
+  const favBtn = document.createElement('button');
+  favBtn.textContent = wishlist.has(book.id) ? '❤️ В избранном' : '🤍 В избранное';
+  favBtn.addEventListener('click', () => {
+    wishlist.toggle(book.id);
+    saveWishlist();
+    renderBooks(catalog.getBooks());
+    renderWishlist();
+  });
+  card.append(favBtn);
+
+  return card;
+}
+
+// отрисовка основного списка
 function renderBooks(books: Book[]) {
   bookList.innerHTML = '';
 
@@ -53,37 +113,33 @@ function renderBooks(books: Book[]) {
   }
 
   books.forEach(book => {
-    const card = document.createElement('div');
-    card.className = 'book-card';
+    bookList.append(createBookCard(book));
+  });
+}
 
-    const titleEl = document.createElement('h3');
-    titleEl.textContent = `${book.title} — ${book.authors.join(', ')}${book.year ? `, ${book.year}` : ''}`;
-    card.append(titleEl);
+// Практика 3.2: отрисовка блока «Моё избранное»
+function renderWishlist() {
+  // Находим элемент с id "wishlistContainer" и приводим его к типу HTMLDivElement
+  const container = document.querySelector('#wishlistContainer') as HTMLDivElement;
+  container.innerHTML = '';
 
-    if (book.rating !== undefined) {
-      const ratingEl = document.createElement('p');
-      ratingEl.textContent = `Рейтинг: ${book.rating}`;
-      card.append(ratingEl);
-    }
+  // Зависимость: получаем полные объекты книг из каталога через параметр
+  const favBooks = wishlist.getFavorites(catalog);
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Удалить';
-    deleteBtn.addEventListener('click', () => {
+  if (favBooks.length === 0) {
+    container.textContent = 'Пока ничего не добавлено';
+    return;
+  }
 
-      // TODO 3.3: удаление — метод класса
-      catalog.removeBook(book.id);
-      saveCatalog();
-      // TODO 3.4: Object.values(catalog) -> catalog.getBooks()
-      renderBooks(catalog.getBooks());
-    });
-    card.append(deleteBtn);
-
-    bookList.append(card);
+  favBooks.forEach(book => {
+    // Переиспользуем функцию создания карточки
+    container.append(createBookCard(book));
   });
 }
 
 // Первичная отрисовка (сортировка — метод класса)
 renderBooks(catalog.sortBy(sortBySelect.value as 'year' | 'rating'));
+renderWishlist();
 
 // обработчик формы
 form.addEventListener('submit', (e) => {
@@ -101,6 +157,7 @@ form.addEventListener('submit', (e) => {
     form.reset();
 
     renderBooks(catalog.getBooks());
+    renderWishlist();
   } catch (error) {
     if (error instanceof Error) {
       errorMessage.textContent = error.message;

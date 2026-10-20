@@ -37,11 +37,15 @@ button {
 
 button:hover { background: #1d4ed8; }
 
-#bookList {
+#bookList, .book-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 16px;
 }
+
+h2 { margin: 32px 0 16px; }
+
+.book-card button { margin: 8px 8px 0 0; }
 
 .book-card {
   background: white;
